@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>FAQ RE2020 - Ventilation</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; background: #f4f4f4; }
+    input { width: 100%; padding: 0.5em; margin-bottom: 1em; font-size: 1em; }
+    .faq { background: white; padding: 1em; margin-bottom: 1em; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .faq h3 { margin: 0 0 0.5em; }
+    .faq small { color: gray; }
+  </style>
+</head>
+<body>
+  <h1>FAQ RE2020 – Vérification des systèmes de ventilation</h1>
+  <input type="text" id="search" placeholder="Rechercher une question ou un code...">
+  <div id="faqList">Chargement des FAQ...</div>
+
+  <script>
+    const proxy = 'https://api.allorigins.win/raw?url=';
+    const baseUrl = 'https://rt-re-batiment.developpement-durable.gouv.fr';
+    const startPath = '/verification-des-systemes-de-ventilation-r375.html';
+
+    async function fetchAllPages(path = startPath, faqs = []) {
+      const fullUrl = baseUrl.replace(/\/$/, "") + "/" + path.replace(/^\//, "");
+  const proxyUrl = proxy + encodeURIComponent(fullUrl);
+
+  const res = await fetch(proxyUrl);
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      const cards = doc.querySelectorAll(".fr-card__content");
+      cards.forEach(item => {
+        const titleElement = item.querySelector("a");
+        const dateElement = item.querySelector(".date_card");
+        if (titleElement) {
+          const question = titleElement.textContent.trim();
+          const codeMatch = question.match(/FAQ RE2020 \d+/i);
+          const code = codeMatch ? codeMatch[0] : "Sans code";
+          const date = dateElement ? dateElement.textContent.trim() : "Date inconnue";
+          const link = titleElement.getAttribute("href");
+    const absoluteLink = new URL(link, baseUrl).href;
+
+    faqs.push({ code, question, date, link: absoluteLink });
+        }
+      });
+
+      const nextLink = doc.querySelector(".fr-pagination__link--next");
+          if (nextLink && nextLink.getAttribute("href")) {
+          const nextPath = nextLink.getAttribute("href");
+          return fetchAllPages(nextPath, faqs);
+      }
+
+      return faqs;
+    }
+
+    function displayFAQs(faqs, filter = "") {
+      const list = document.getElementById("faqList");
+      list.innerHTML = "";
+      const filtered = faqs.filter(f =>
+        f.question.toLowerCase().includes(filter.toLowerCase()) ||
+        f.code.toLowerCase().includes(filter.toLowerCase())
+      );
+      if (filtered.length === 0) {
+        list.innerHTML = "<p>Aucune FAQ trouvée.</p>";
+        return;
+      }
+      filtered.forEach(faq => {
+        const div = document.createElement("div");
+        div.className = "faq";
+        div.innerHTML = `
+  <h3>${faq.code}</h3>
+  <p><a href="${faq.link}" target="_blank" rel="noopener">${faq.question}</a></p>
+  <small>${faq.date}</small>
+`;
+        list.appendChild(div);
+      });
+    }
+
+    let allFaqs = [];
+
+    fetchAllPages().then(faqs => {
+      allFaqs = faqs;
+      displayFAQs(allFaqs);
+    });
+
+    document.getElementById("search").addEventListener("input", e => {
+      displayFAQs(allFaqs, e.target.value);
+    });
+  </script>
+</body>
+</html>
